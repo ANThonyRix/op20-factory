@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OP-20 Token Factory | Launch Your Token on Bitcoin</title>
+  <meta name="description"
+    content="Deploy your own OP-20 token on OPNet Bitcoin L1. Set name, symbol, supply — and launch in one click." />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" type="image/svg+xml"
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='16' fill='%23ff6b00'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-size='20' font-weight='bold' fill='white' font-family='Arial'%3E₿%3C/text%3E%3C/svg%3E" />
+</head>
+
+<body>
+
+  <!-- Grid dot background texture -->
+  <div class="grid-texture" aria-hidden="true"></div>
+
+  <!-- Floating Bitcoin symbols -->
+  <div class="btc-floaters" aria-hidden="true">
+    <span class="btc-floater" style="left:5%;animation-delay:0s;font-size:2.5rem;">₿</span>
+    <span class="btc-floater" style="left:18%;animation-delay:4s;font-size:1.8rem;">₿</span>
+    <span class="btc-floater" style="left:32%;animation-delay:8s;font-size:3rem;">₿</span>
+    <span class="btc-floater" style="left:48%;animation-delay:2s;font-size:2rem;">₿</span>
+    <span class="btc-floater" style="left:62%;animation-delay:6s;font-size:2.2rem;">₿</span>
+    <span class="btc-floater" style="left:78%;animation-delay:10s;font-size:1.6rem;">₿</span>
+    <span class="btc-floater" style="left:90%;animation-delay:3s;font-size:2.8rem;">₿</span>
+  </div>
+
+  <!-- ===== Header ===== -->
+  <header class="header">
+    <div class="header__logo">
+      <div class="header__logo-icon">TF</div>
+      Token Factory
+      <span class="header__network">
+        <span class="header__network-dot"></span>
+        OPNet Testnet
+      </span>
+    </div>
+    <button id="btn-wallet" class="btn-wallet" type="button">
+      <span class="btn-wallet__dot"></span>
+      <span id="wallet-label">Connect Wallet</span>
+    </button>
+  </header>
+
+  <!-- ===== Hero Banner ===== -->
+  <div class="hero-banner">
+    <p class="hero-banner__slogan">⚡ Launch your Bitcoin token in 60 seconds</p>
+    <div class="hero-banner__counter">
+      <span class="hero-banner__count" id="global-token-count">0</span>
+      <span class="hero-banner__label">tokens launched so far</span>
+    </div>
+  </div>
+
+  <!-- ===== Main ===== -->
+  <main class="main">
+    <div class="launch-card">
+
+      <!-- Form View -->
+      <div id="form-view">
+        <h1 class="launch-card__title">Launch Your Token</h1>
+        <p class="launch-card__subtitle">Deploy an OP-20 token on Bitcoin in seconds.</p>
+
+        <form id="launch-form" autocomplete="off">
+          <div class="form-group">
+            <label for="token-name">Token Name</label>
+            <input id="token-name" type="text" placeholder="e.g. My Awesome Token" maxlength="32" required />
+          </div>
+
+          <div class="form-group">
+            <label for="token-symbol">Token Symbol</label>
+            <input id="token-symbol" type="text" placeholder="e.g. MAT" maxlength="6" pattern="[A-Z]{1,6}" required />
+          </div>
+
+          <div class="form-group">
+            <label for="total-supply">Total Supply</label>
+            <input id="total-supply" type="text" inputmode="numeric" placeholder="e.g. 1000000" required />
+          </div>
+
+          <div class="fee-notice">
+            <span class="fee-notice__label">Deployment Fee</span>
+            <span class="fee-notice__value">0.0001 BTC</span>
+          </div>
+
+          <div id="error-msg" class="error-msg"></div>
+
+          <button id="btn-launch" class="btn-launch" type="submit" disabled>
+            <span class="spinner"></span>
+            <span class="btn-launch__text">Launch Token</span>
+          </button>
+        </form>
+      </div>
+
+      <!-- Success View -->
+      <div id="success-view" class="success-screen">
+        <div class="success-icon">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <polyline points="20 6 9 17 4 12" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </div>
+        <h2 class="success-screen__title">Token Launched!</h2>
+        <p class="success-screen__subtitle">Your OP-20 token has been deployed to the network.</p>
+
+        <div class="address-box">
+          <span id="token-address" class="address-box__value">—</span>
+          <button id="btn-copy" class="btn-copy" type="button" title="Copy address">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"
+              stroke-linecap="round" stroke-linejoin="round">
+              <rect x="5" y="5" width="9" height="9" rx="1.5" />
+              <path d="M11 5V3.5A1.5 1.5 0 009.5 2h-6A1.5 1.5 0 002 3.5v6A1.5 1.5 0 003.5 11H5" />
+            </svg>
+          </button>
+        </div>
+
+        <button id="btn-reset" class="btn-reset" type="button">
+          Launch Another Token
+        </button>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ===== Recently Launched Tokens ===== -->
+  <section class="tokens-section" id="tokens-section">
+    <div class="tokens-section__header">
+      <h2 class="tokens-section__title">Recently Launched Tokens</h2>
+      <span class="tokens-section__count" id="tokens-count">0</span>
+    </div>
+    <div class="tokens-list" id="tokens-list">
+      <div class="tokens-empty" id="tokens-empty">
+        <div class="tokens-empty__icon">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 6v6l4 2" />
+          </svg>
+        </div>
+        <p>No tokens launched yet.</p>
+        <p class="tokens-empty__hint">Deploy your first OP-20 token above to get started.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Token Detail Modal ===== -->
+  <div class="detail-overlay" id="detail-overlay">
+    <div class="detail-card" id="detail-card">
+      <button class="detail-card__close" id="detail-close" type="button" aria-label="Close">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+      </button>
+
+      <div class="detail-card__icon" id="detail-icon"></div>
+      <h2 class="detail-card__name" id="detail-name"></h2>
+      <span class="detail-card__symbol-badge" id="detail-symbol"></span>
+
+      <div class="detail-card__rows">
+        <div class="detail-row">
+          <span class="detail-row__label">Total Supply</span>
+          <span class="detail-row__value" id="detail-supply"></span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-row__label">Contract Address</span>
+          <div class="detail-row__copyable">
+            <span class="detail-row__value detail-row__value--mono" id="detail-address"></span>
+            <button class="btn-copy-sm" id="detail-copy-addr" type="button" title="Copy address">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"
+                stroke-linecap="round" stroke-linejoin="round">
+                <rect x="5" y="5" width="9" height="9" rx="1.5" />
+                <path d="M11 5V3.5A1.5 1.5 0 009.5 2h-6A1.5 1.5 0 002 3.5v6A1.5 1.5 0 003.5 11H5" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="detail-row">
+          <span class="detail-row__label">Creator</span>
+          <span class="detail-row__value detail-row__value--mono" id="detail-creator"></span>
+        </div>
+      </div>
+
+      <div class="detail-card__actions">
+        <button class="btn-action btn-action--wallet" id="detail-add-wallet" type="button">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="5" width="20" height="14" rx="2" />
+            <path d="M16 12h.01" />
+            <path d="M2 10h20" />
+          </svg>
+          Add to OPWallet
+        </button>
+        <button class="btn-action btn-action--twitter" id="detail-share-twitter" type="button">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <path
+              d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+          </svg>
+          Share on X
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Footer ===== -->
+  <footer class="footer">
+    Powered by <a href="https://opnet.org" target="_blank" rel="noopener">OPNet</a> — Bitcoin L1 Smart Contracts
+  </footer>
+
+  <!-- ===== Script ===== -->
+  <script type="module" src="app.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OPNet Factory Deployer</title>
+    <style>
+        body {
+            background: #0f1219;
+            color: #fff;
+            font-family: system-ui, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .container {
+            background: #1a1e26;
+            border: 1px solid #2d3342;
+            border-radius: 12px;
+            padding: 40px;
+            width: 100%;
+            max-width: 500px;
+        }
+
+        h1 {
+            color: #f7931a;
+            margin-top: 0;
+        }
+
+        button,
+        input[type="file"]::file-selector-button {
+            background: #f7931a;
+            border: none;
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-top: 10px;
+            font-size: 16px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        button:hover,
+        input[type="file"]::file-selector-button:hover {
+            background: #e68a18;
+        }
+
+        button:disabled {
+            background: #333;
+            color: #888;
+            cursor: not-allowed;
+        }
+
+        input[type="file"] {
+            margin: 20px 0;
+            color: #aaa;
+            width: 100%;
+        }
+
+        #status {
+            margin-top: 20px;
+            padding: 15px;
+            background: #111;
+            border-radius: 8px;
+            color: #4ade80;
+            display: none;
+            word-wrap: break-word;
+        }
+
+        .step {
+            margin: 25px 0;
+            padding-bottom: 25px;
+            border-bottom: 1px solid #2d3342;
+            text-align: left;
+        }
+
+        .step:last-child {
+            border-bottom: none;
+        }
+
+        p {
+            margin: 5px 0;
+            color: #aaa;
+        }
+
+        .wallet-status {
+            color: #f7931a;
+            font-family: monospace;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Manual Factory Deployer</h1>
+        <p style="margin-bottom: 30px;">Deploy your `factory.wasm` directly via OPWallet.</p>
+
+        <div class="step">
+            <p><b>Step 1:</b> Connect OPWallet (Testnet)</p>
+            <button id="btn-connect">Connect Wallet</button>
+            <div id="wallet-status" class="wallet-status" style="margin-top: 10px;"></div>
+        </div>
+
+        <div class="step">
+            <p><b>Step 2:</b> Select Contract WASM</p>
+            <input type="file" id="file-input" accept=".wasm" />
+        </div>
+
+        <div class="step">
+            <p><b>Step 3:</b> Deploy to OPNet</p>
+            <button id="btn-deploy" disabled>Sign & Deploy Contract</button>
+            <div id="status"></div>
+        </div>
+    </div>
+
+    <script type="module" src="/deploy-factory.js"></script>
+</body>
+
+</html>
