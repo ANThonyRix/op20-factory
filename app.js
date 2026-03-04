@@ -278,6 +278,17 @@ function updateLaunchButton() {
  * @returns {Promise<string>} The deployed token contract address
  */
 async function deployToken(name, symbol, totalSupply) {
+    console.log('deployToken called with:', {
+        name: name,
+        nameType: typeof name,
+        symbol: symbol,
+        symbolType: typeof symbol,
+        supply: totalSupply,
+        supplyType: typeof totalSupply,
+        wallet: state.walletAddress,
+        walletType: typeof state.walletAddress
+    });
+
     const { getContract, JSONRpcProvider, BitcoinUtils } = await import('opnet');
     const { networks } = await import('@btc-vision/bitcoin');
 
