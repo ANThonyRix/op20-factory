@@ -176,8 +176,16 @@ async function connectWallet() {
     try {
         const provider = window.opnet || window.unisat;
         const accounts = await provider.requestAccounts();
+        console.log('👜 Wallet accounts returned:', accounts);
         if (accounts && accounts.length > 0) {
-            state.walletAddress = accounts[0];
+            const raw = accounts[0];
+            // OPWallet may return an object instead of a plain string
+            if (typeof raw === 'object' && raw !== null) {
+                state.walletAddress = raw.address || raw.p2tr || raw.p2wpkh || String(raw);
+            } else {
+                state.walletAddress = String(raw);
+            }
+            console.log('👜 Resolved walletAddress:', state.walletAddress);
             state.isConnected = true;
             updateWalletUI();
             updateLaunchButton();
@@ -185,6 +193,7 @@ async function connectWallet() {
             SFX.click();
         }
     } catch (err) {
+        console.error('❌ Wallet connection error:', err);
         showError('Wallet connection rejected.');
     }
 }
@@ -305,8 +314,11 @@ async function deployToken(name, symbol, totalSupply) {
     let provider, network;
     try {
         network = networks.opnetTestnet;
-        provider = new JSONRpcProvider({ url: CONFIG.RPC_URL, network });
-        console.log('✅ STEP 1: Provider created. RPC URL:', CONFIG.RPC_URL);
+        // CRITICAL FIX: Ensure url is always a plain string — providerUrl() calls .trim() immediately
+        const rpcUrl = String(CONFIG.RPC_URL);
+        console.log('🔄 STEP 1: Creating provider with URL:', rpcUrl, 'type:', typeof rpcUrl);
+        provider = new JSONRpcProvider({ url: rpcUrl, network });
+        console.log('✅ STEP 1: Provider created successfully.');
     } catch (e) {
         console.error('❌ STEP 1 FAILED: JSONRpcProvider creation error:', e);
         throw e;
