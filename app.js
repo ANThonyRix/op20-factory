@@ -307,11 +307,11 @@ async function deployToken(name, symbol, totalSupply) {
     });
 
     // ── STEP 0: Import SDK modules ─────────────────────────────────────────
-    let getContract, JSONRpcProvider, BitcoinUtils, networks, ABIDataTypes, BitcoinAbiTypes;
+    let getContract, JSONRpcProvider, BitcoinUtils, networks;
     try {
         ({ getContract, JSONRpcProvider, BitcoinUtils } = await import('opnet'));
         ({ networks } = await import('@btc-vision/bitcoin'));
-        ({ ABIDataTypes, BitcoinAbiTypes } = await import('@btc-vision/transaction'));
+        // Note: ABIDataTypes & BitcoinAbiTypes are NOT used — we use string literals below
         console.log('✅ STEP 0: SDK imports OK');
     } catch (e) {
         console.error('❌ STEP 0 FAILED: SDK import error:', e);
@@ -340,18 +340,18 @@ async function deployToken(name, symbol, totalSupply) {
     // ── STEP 3: Build ABI and contract ─────────────────────────────────────
     let factory, supplyBig;
     try {
-        // Using ABIDataTypes enum values + required type: BitcoinAbiTypes.Function field
+        // ABI using exact SDK string values (from ABIDataTypes enum: STRING='STRING', etc.)
+        // BitcoinAbiTypes.Function does NOT exist — omit the 'type' field entirely.
         const FACTORY_ABI = [
             {
                 name: 'deployToken',
-                type: BitcoinAbiTypes.Function,
                 inputs: [
-                    { name: 'name', type: ABIDataTypes.STRING },
-                    { name: 'symbol', type: ABIDataTypes.STRING },
-                    { name: 'totalSupply', type: ABIDataTypes.UINT256 },
+                    { name: 'name', type: 'STRING' },
+                    { name: 'symbol', type: 'STRING' },
+                    { name: 'totalSupply', type: 'UINT256' },
                 ],
                 outputs: [
-                    { name: 'newToken', type: ABIDataTypes.ADDRESS },
+                    { name: 'newToken', type: 'ADDRESS' },
                 ],
             },
         ];
