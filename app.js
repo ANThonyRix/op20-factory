@@ -322,9 +322,9 @@ async function deployToken(name, symbol, totalSupply) {
     let provider, network;
     try {
         network = networks.opnetTestnet;
-        // Use the standalone RPC_URL constant — immune to Vite build mangling
+        // Pass URL and network as positional args — the bundled SDK uses (url, network) signature
         console.log('🔄 STEP 1: Creating provider with URL:', RPC_URL, 'type:', typeof RPC_URL);
-        provider = new JSONRpcProvider({ url: RPC_URL, network });
+        provider = new JSONRpcProvider(RPC_URL, network);
         console.log('✅ STEP 1: Provider created successfully.');
     } catch (e) {
         console.error('❌ STEP 1 FAILED: JSONRpcProvider creation error:', e);
