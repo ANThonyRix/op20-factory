@@ -289,52 +289,101 @@ async function deployToken(name, symbol, totalSupply) {
         walletType: typeof state.walletAddress
     });
 
-    const { getContract, JSONRpcProvider, BitcoinUtils } = await import('opnet');
-    const { networks } = await import('@btc-vision/bitcoin');
-
-    const network = networks.opnetTestnet;
-    const provider = new JSONRpcProvider({ url: CONFIG.RPC_URL, network });
-
-    // Resolve address objects from the network (necessary for the SDK)
-    const senderAddress = await provider.getPublicKeyInfo(state.walletAddress, false);
-    if (!senderAddress) {
-        throw new Error(`Could not resolve public key for ${state.walletAddress}. Make sure your wallet is funded and has at least one transaction.`);
+    // ── STEP 0: Import SDK modules ─────────────────────────────────────────
+    let getContract, JSONRpcProvider, BitcoinUtils, networks, ABIDataTypes, BitcoinAbiTypes;
+    try {
+        ({ getContract, JSONRpcProvider, BitcoinUtils } = await import('opnet'));
+        ({ networks } = await import('@btc-vision/bitcoin'));
+        ({ ABIDataTypes, BitcoinAbiTypes } = await import('@btc-vision/transaction'));
+        console.log('✅ STEP 0: SDK imports OK');
+    } catch (e) {
+        console.error('❌ STEP 0 FAILED: SDK import error:', e);
+        throw e;
     }
 
-    // Pass factory address as string, getContract handles it
-    const FACTORY_ABI = [
-        {
-            name: 'deployToken',
-            inputs: [
-                { name: 'name', type: 'STRING' },
-                { name: 'symbol', type: 'STRING' },
-                { name: 'totalSupply', type: 'UINT256' },
-            ],
-            outputs: [
-                { name: 'newToken', type: 'ADDRESS' },
-            ],
-        },
-    ];
-
-    const factory = getContract(CONFIG.FACTORY_ADDRESS, FACTORY_ABI, provider, network, senderAddress);
-
-    const supplyBig = BitcoinUtils.expandToDecimals(totalSupply, 18);
-
-    // 1. Simulate
-    const simulation = await factory.deployToken(name, symbol, supplyBig);
-    if ('error' in simulation) {
-        throw new Error(simulation.error);
+    // ── STEP 1: Create provider ─────────────────────────────────────────────
+    let provider, network;
+    try {
+        network = networks.opnetTestnet;
+        provider = new JSONRpcProvider({ url: CONFIG.RPC_URL, network });
+        console.log('✅ STEP 1: Provider created. RPC URL:', CONFIG.RPC_URL);
+    } catch (e) {
+        console.error('❌ STEP 1 FAILED: JSONRpcProvider creation error:', e);
+        throw e;
     }
 
-    // 2. Send (OPWallet handles signing)
-    const receipt = await simulation.sendTransaction({
-        signer: null,
-        mldsaSigner: null,
-        refundTo: senderAddress,
-        feeRate: 200,
-    });
+    // ── STEP 2: Resolve sender public key ───────────────────────────────────
+    let senderAddress;
+    try {
+        console.log('🔄 STEP 2: Calling getPublicKeyInfo for:', state.walletAddress);
+        senderAddress = await provider.getPublicKeyInfo(state.walletAddress, false);
+        console.log('✅ STEP 2: senderAddress resolved:', senderAddress, 'type:', typeof senderAddress);
+        if (!senderAddress) {
+            throw new Error(`Could not resolve public key for ${state.walletAddress}. Make sure your wallet is funded and has at least one transaction.`);
+        }
+    } catch (e) {
+        console.error('❌ STEP 2 FAILED: getPublicKeyInfo error:', e);
+        throw e;
+    }
 
-    // 3. Parse the returned token address from the receipt
+    // ── STEP 3: Build ABI and contract ─────────────────────────────────────
+    let factory, supplyBig;
+    try {
+        // Using ABIDataTypes enum values + required type: BitcoinAbiTypes.Function field
+        const FACTORY_ABI = [
+            {
+                name: 'deployToken',
+                type: BitcoinAbiTypes.Function,
+                inputs: [
+                    { name: 'name', type: ABIDataTypes.STRING },
+                    { name: 'symbol', type: ABIDataTypes.STRING },
+                    { name: 'totalSupply', type: ABIDataTypes.UINT256 },
+                ],
+                outputs: [
+                    { name: 'newToken', type: ABIDataTypes.ADDRESS },
+                ],
+            },
+        ];
+        factory = getContract(CONFIG.FACTORY_ADDRESS, FACTORY_ABI, provider, network, senderAddress);
+        // Convert supply string → BigInt before passing to SDK
+        supplyBig = BitcoinUtils.expandToDecimals(BigInt(totalSupply), 18);
+        console.log('✅ STEP 3: Contract built. supplyBig:', supplyBig.toString());
+    } catch (e) {
+        console.error('❌ STEP 3 FAILED: getContract/ABI build error:', e);
+        throw e;
+    }
+
+    // ── STEP 4: Simulate deployToken ────────────────────────────────────────
+    let simulation;
+    try {
+        console.log('🔄 STEP 4: Simulating deployToken(', name, ',', symbol, ',', supplyBig, ')');
+        simulation = await factory.deployToken(name, symbol, supplyBig);
+        console.log('✅ STEP 4: Simulation result received');
+        if ('error' in simulation) {
+            throw new Error(simulation.error);
+        }
+    } catch (e) {
+        console.error('❌ STEP 4 FAILED: factory.deployToken simulation error:', e);
+        throw e;
+    }
+
+    // ── STEP 5: Send transaction ────────────────────────────────────────────
+    let receipt;
+    try {
+        console.log('🔄 STEP 5: Sending transaction...');
+        receipt = await simulation.sendTransaction({
+            signer: null,
+            mldsaSigner: null,
+            refundTo: senderAddress,
+            feeRate: 200,
+        });
+        console.log('✅ STEP 5: receipt received');
+    } catch (e) {
+        console.error('❌ STEP 5 FAILED: sendTransaction error:', e);
+        throw e;
+    }
+
+    // ── STEP 6: Parse result ────────────────────────────────────────────────
     if (!receipt || !receipt.result || !receipt.result.newToken) {
         throw new Error('Transaction successful but could not parse token address.');
     }
