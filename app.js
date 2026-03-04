@@ -8,15 +8,23 @@
 // ============================================================
 // Configuration
 // ============================================================
-const CONFIG = {
+const CONFIG = Object.freeze({
     /** Replace with your deployed factory contract address */
     FACTORY_ADDRESS: 'opt1sqqrt069k348lqu0qtyrs5qt9ql786rflquarwwe2',
     NETWORK: 'testnet',
+    // NOTE: These must be string literals — Vite production builds can break
+    // object property access if the whole object gets mangled during minification.
     RPC_URL: 'https://testnet.opnet.org',
     FEE_SATS: 10000, // 0.0001 BTC
     STORAGE_KEY: 'op20_factory_launched_tokens',
     TIME_REFRESH_MS: 30000, // Update "time ago" every 30 seconds
-};
+});
+
+// Standalone string constants — immune to Vite minification/mangling.
+// Use these instead of CONFIG.* in SDK calls.
+const RPC_URL = 'https://testnet.opnet.org';
+const FACTORY_ADDRESS = 'opt1sqqrt069k348lqu0qtyrs5qt9ql786rflquarwwe2';
+
 
 // ============================================================
 // DOM References
@@ -314,10 +322,9 @@ async function deployToken(name, symbol, totalSupply) {
     let provider, network;
     try {
         network = networks.opnetTestnet;
-        // CRITICAL FIX: Ensure url is always a plain string — providerUrl() calls .trim() immediately
-        const rpcUrl = String(CONFIG.RPC_URL);
-        console.log('🔄 STEP 1: Creating provider with URL:', rpcUrl, 'type:', typeof rpcUrl);
-        provider = new JSONRpcProvider({ url: rpcUrl, network });
+        // Use the standalone RPC_URL constant — immune to Vite build mangling
+        console.log('🔄 STEP 1: Creating provider with URL:', RPC_URL, 'type:', typeof RPC_URL);
+        provider = new JSONRpcProvider({ url: RPC_URL, network });
         console.log('✅ STEP 1: Provider created successfully.');
     } catch (e) {
         console.error('❌ STEP 1 FAILED: JSONRpcProvider creation error:', e);
@@ -356,7 +363,7 @@ async function deployToken(name, symbol, totalSupply) {
                 ],
             },
         ];
-        factory = getContract(CONFIG.FACTORY_ADDRESS, FACTORY_ABI, provider, network, senderAddress);
+        factory = getContract(FACTORY_ADDRESS, FACTORY_ABI, provider, network, senderAddress);
         // Convert supply string → BigInt before passing to SDK
         supplyBig = BitcoinUtils.expandToDecimals(BigInt(totalSupply), 18);
         console.log('✅ STEP 3: Contract built. supplyBig:', supplyBig.toString());
