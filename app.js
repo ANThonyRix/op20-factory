@@ -145,7 +145,7 @@ const SFX = {
  * @returns {boolean} True if OPWallet is detected
  */
 function isWalletAvailable() {
-    return typeof window !== 'undefined' && typeof window.unisat !== 'undefined';
+    return typeof window !== 'undefined' && (typeof window.unisat !== 'undefined' || typeof window.opnet !== 'undefined');
 }
 
 /**
@@ -174,7 +174,8 @@ async function connectWallet() {
     }
 
     try {
-        const accounts = await window.unisat.requestAccounts();
+        const provider = window.opnet || window.unisat;
+        const accounts = await provider.requestAccounts();
         if (accounts && accounts.length > 0) {
             state.walletAddress = accounts[0];
             state.isConnected = true;
@@ -278,16 +279,18 @@ function updateLaunchButton() {
  */
 async function deployToken(name, symbol, totalSupply) {
     const { getContract, JSONRpcProvider, BitcoinUtils } = await import('opnet');
-    const { Address } = await import('@btc-vision/transaction');
     const { networks } = await import('@btc-vision/bitcoin');
 
     const network = networks.opnetTestnet;
     const provider = new JSONRpcProvider({ url: CONFIG.RPC_URL, network });
 
-    const senderAddress = Address.fromString(state.walletAddress);
-    const factoryAddress = Address.fromString(CONFIG.FACTORY_ADDRESS);
+    // Resolve address objects from the network (necessary for the SDK)
+    const senderAddress = await provider.getPublicKeyInfo(state.walletAddress, false);
+    if (!senderAddress) {
+        throw new Error(`Could not resolve public key for ${state.walletAddress}. Make sure your wallet is funded and has at least one transaction.`);
+    }
 
-    // Factory ABI with deployToken method
+    // Pass factory address as string, getContract handles it
     const FACTORY_ABI = [
         {
             name: 'deployToken',
@@ -302,7 +305,7 @@ async function deployToken(name, symbol, totalSupply) {
         },
     ];
 
-    const factory = getContract(factoryAddress, FACTORY_ABI, provider, network, senderAddress);
+    const factory = getContract(CONFIG.FACTORY_ADDRESS, FACTORY_ABI, provider, network, senderAddress);
 
     const supplyBig = BitcoinUtils.expandToDecimals(totalSupply, 18);
 
@@ -564,9 +567,8 @@ async function addTokenToWallet() {
     }
 
     try {
-        // OPWallet uses the unisat-compatible provider
-        // Attempt to add the token — the wallet will prompt the user
-        if (window.unisat && typeof window.unisat.sendBitcoin === 'function') {
+        const provider = window.opnet || window.unisat;
+        if (provider && typeof provider.sendBitcoin === 'function') {
             // For now we copy the address so the user can add manually
             await navigator.clipboard.writeText(token.address);
             alert('Token address copied! Add it manually in OPWallet > Manage Tokens.');
