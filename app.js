@@ -331,19 +331,11 @@ async function deployToken(name, symbol, totalSupply) {
         throw e;
     }
 
-    // ── STEP 2: Resolve sender public key ───────────────────────────────────
-    let senderAddress;
-    try {
-        console.log('🔄 STEP 2: Calling getPublicKeyInfo for:', state.walletAddress);
-        senderAddress = await provider.getPublicKeyInfo(state.walletAddress, false);
-        console.log('✅ STEP 2: senderAddress resolved:', senderAddress, 'type:', typeof senderAddress);
-        if (!senderAddress) {
-            throw new Error(`Could not resolve public key for ${state.walletAddress}. Make sure your wallet is funded and has at least one transaction.`);
-        }
-    } catch (e) {
-        console.error('❌ STEP 2 FAILED: getPublicKeyInfo error:', e);
-        throw e;
-    }
+    // ── STEP 2: Use wallet address directly (OPWallet handles signing) ──────
+    // getPublicKeyInfo is NOT needed when OPWallet is the signer.
+    // Passing the bech32 address string directly is correct for OPWallet flows.
+    const senderAddress = state.walletAddress;
+    console.log('✅ STEP 2: Using wallet address directly:', senderAddress);
 
     // ── STEP 3: Build ABI and contract ─────────────────────────────────────
     let factory, supplyBig;
@@ -386,13 +378,13 @@ async function deployToken(name, symbol, totalSupply) {
         throw e;
     }
 
-    // ── STEP 5: Send transaction ────────────────────────────────────────────
+    // ── STEP 5: Send transaction via OPWallet ───────────────────────────────
     let receipt;
     try {
         console.log('🔄 STEP 5: Sending transaction...');
         receipt = await simulation.sendTransaction({
-            signer: null,
-            mldsaSigner: null,
+            signer: null,       // OPWallet signs
+            mldsaSigner: null,  // OPWallet signs
             refundTo: senderAddress,
             feeRate: 200,
         });
