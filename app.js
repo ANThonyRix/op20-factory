@@ -331,16 +331,26 @@ async function deployToken(name, symbol, totalSupply) {
         throw e;
     }
 
-    // ── STEP 2: Use wallet public key to derive Address ──────────────────────
+    // ── STEP 2: Get public key info via OPNet provider, build Address object ───
     let senderAddress;
     try {
-        const walletProvider = window.opnet || window.unisat;
-        const pubKeyHex = await walletProvider.getPublicKey();
-        console.log('👜 Wallet public key fetched:', pubKeyHex);
+        const { Address } = await import('@btc-vision/transaction');
 
-        // Address.fromPubKey is the standard way in @btc-vision/transaction
-        senderAddress = Address.fromString(pubKeyHex);
-        console.log('✅ STEP 2: Derived senderAddress object:', senderAddress);
+        // provider.getPublicKeyInfo() returns the 32-byte x-only public key hex
+        const pubKeyInfo = await provider.getPublicKeyInfo(state.walletAddress);
+        console.log('✅ STEP 2: pubKeyInfo:', pubKeyInfo);
+
+        // pubKeyInfo is either a hex string or object with .publicKey
+        const pubKeyHex = typeof pubKeyInfo === 'string'
+            ? pubKeyInfo
+            : (pubKeyInfo.publicKey || pubKeyInfo.pubkey || pubKeyInfo.hex);
+
+        // Strip 0x prefix if present, strip 02/03 prefix if 33 bytes (66 chars)
+        let cleanHex = pubKeyHex.replace(/^0x/, '');
+        if (cleanHex.length === 66) cleanHex = cleanHex.slice(2); // remove 02/03
+
+        senderAddress = new Address(Buffer.from(cleanHex, 'hex'));
+        console.log('✅ STEP 2: Address created, toHex:', senderAddress.toHex());
     } catch (e) {
         console.error('❌ STEP 2 FAILED: Public key / Address derivation error:', e);
         throw e;
