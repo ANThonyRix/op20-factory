@@ -331,30 +331,8 @@ async function deployToken(name, symbol, totalSupply) {
         throw e;
     }
 
-    // ── STEP 2: Get public key info via OPNet provider, build Address object ───
-    let senderAddress;
-    try {
-        const { Address } = await import('@btc-vision/transaction');
-
-        // provider.getPublicKeyInfo() returns the 32-byte x-only public key hex
-        const pubKeyInfo = await provider.getPublicKeyInfo(state.walletAddress);
-        console.log('✅ STEP 2: pubKeyInfo:', pubKeyInfo);
-
-        // pubKeyInfo is either a hex string or object with .publicKey
-        const pubKeyHex = typeof pubKeyInfo === 'string'
-            ? pubKeyInfo
-            : (pubKeyInfo.publicKey || pubKeyInfo.pubkey || pubKeyInfo.hex);
-
-        // Strip 0x prefix if present, strip 02/03 prefix if 33 bytes (66 chars)
-        let cleanHex = pubKeyHex.replace(/^0x/, '');
-        if (cleanHex.length === 66) cleanHex = cleanHex.slice(2); // remove 02/03
-
-        senderAddress = new Address(Buffer.from(cleanHex, 'hex'));
-        console.log('✅ STEP 2: Address created, toHex:', senderAddress.toHex());
-    } catch (e) {
-        console.error('❌ STEP 2 FAILED: Public key / Address derivation error:', e);
-        throw e;
-    }
+    // ── STEP 2: Skip manual Address creation — OPWallet handles signing ────────
+    console.log('✅ STEP 2: Using null sender — OPWallet will sign');
 
     // ── STEP 3: Build ABI and contract ─────────────────────────────────────
     let factory, supplyBig;
@@ -374,7 +352,8 @@ async function deployToken(name, symbol, totalSupply) {
                 ],
             },
         ];
-        factory = getContract(FACTORY_ADDRESS, FACTORY_ABI, provider, network, senderAddress);
+        // Pass undefined as `from` — OPWallet injects signer at sendTransaction
+        factory = getContract(FACTORY_ADDRESS, FACTORY_ABI, provider, network, undefined);
         // Convert supply string → BigInt before passing to SDK
         supplyBig = BitcoinUtils.expandToDecimals(BigInt(totalSupply), 18);
         console.log('✅ STEP 3: Contract built. supplyBig:', supplyBig.toString());
@@ -402,9 +381,9 @@ async function deployToken(name, symbol, totalSupply) {
     try {
         console.log('🔄 STEP 5: Sending transaction...');
         receipt = await simulation.sendTransaction({
-            signer: null,       // OPWallet signs
-            mldsaSigner: null,  // OPWallet signs
-            refundTo: senderAddress,
+            signer: window.opnet || window.unisat,  // OPWallet as signer
+            mldsaSigner: null,
+            refundTo: state.walletAddress,
             feeRate: 200,
         });
         console.log('✅ STEP 5: receipt received');
