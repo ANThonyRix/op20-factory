@@ -6,121 +6,365 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OPNet Factory Deployer</title>
     <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
         body {
-            background: #0f1219;
-            color: #fff;
-            font-family: system-ui, sans-serif;
+            background: #0a0c12;
+            color: #e2e8f0;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            margin: 0;
-            padding: 20px;
+            justify-content: flex-start;
+            padding: 40px 20px;
+        }
+
+        header {
             text-align: center;
+            margin-bottom: 36px;
         }
 
-        .container {
-            background: #1a1e26;
-            border: 1px solid #2d3342;
-            border-radius: 12px;
-            padding: 40px;
-            width: 100%;
-            max-width: 500px;
-        }
-
-        h1 {
+        header h1 {
+            font-size: 2rem;
+            font-weight: 800;
             color: #f7931a;
-            margin-top: 0;
+            letter-spacing: -0.5px;
         }
 
-        button,
-        input[type="file"]::file-selector-button {
-            background: #f7931a;
+        header p {
+            color: #64748b;
+            margin-top: 6px;
+            font-size: 0.95rem;
+        }
+
+        .stepper {
+            width: 100%;
+            max-width: 600px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .step-card {
+            background: #131720;
+            border: 1px solid #1e2533;
+            border-radius: 14px;
+            padding: 24px 28px;
+            transition: border-color 0.2s;
+        }
+
+        .step-card.active {
+            border-color: #f7931a44;
+        }
+
+        .step-card.done {
+            border-color: #22c55e44;
+        }
+
+        .step-card.locked {
+            opacity: 0.45;
+            pointer-events: none;
+        }
+
+        .step-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 16px;
+        }
+
+        .step-num {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #1e2533;
+            border: 2px solid #2d3748;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.85rem;
+            color: #94a3b8;
+            flex-shrink: 0;
+        }
+
+        .step-card.active .step-num {
+            background: #f7931a22;
+            border-color: #f7931a;
+            color: #f7931a;
+        }
+
+        .step-card.done .step-num {
+            background: #22c55e22;
+            border-color: #22c55e;
+            color: #22c55e;
+        }
+
+        .step-title {
+            font-weight: 700;
+            font-size: 1rem;
+            color: #e2e8f0;
+        }
+
+        .step-desc {
+            font-size: 0.82rem;
+            color: #64748b;
+            margin-top: 2px;
+        }
+
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 13px 20px;
+            background: linear-gradient(135deg, #f7931a, #e68a18);
             border: none;
+            border-radius: 10px;
             color: #fff;
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-weight: bold;
+            font-size: 0.95rem;
+            font-weight: 700;
             cursor: pointer;
-            transition: 0.2s;
-            margin-top: 10px;
-            font-size: 16px;
-            width: 100%;
-            box-sizing: border-box;
+            transition: opacity 0.15s, transform 0.1s;
+            letter-spacing: 0.01em;
         }
 
-        button:hover,
-        input[type="file"]::file-selector-button:hover {
-            background: #e68a18;
+        .btn:hover:not(:disabled) {
+            opacity: 0.9;
+            transform: translateY(-1px);
         }
 
-        button:disabled {
-            background: #333;
-            color: #888;
+        .btn:disabled {
+            background: #1e2533;
+            color: #475569;
             cursor: not-allowed;
+            transform: none;
         }
 
-        input[type="file"] {
-            margin: 20px 0;
-            color: #aaa;
-            width: 100%;
+        .btn.secondary {
+            background: transparent;
+            border: 1px solid #2d3748;
+            color: #94a3b8;
         }
 
-        #status {
-            margin-top: 20px;
-            padding: 15px;
-            background: #111;
+        .address-box {
+            margin-top: 14px;
+            background: #0a0c12;
+            border: 1px solid #22c55e44;
+            border-radius: 10px;
+            padding: 14px 16px;
+        }
+
+        .address-box label {
+            font-size: 0.75rem;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .address-box .addr {
+            font-family: 'Courier New', monospace;
+            font-size: 0.82rem;
+            color: #22c55e;
+            word-break: break-all;
+            margin-top: 4px;
+            user-select: all;
+        }
+
+        .address-box .copy-btn {
+            display: inline-block;
+            margin-top: 8px;
+            padding: 4px 12px;
+            background: #1e2533;
+            border: 1px solid #2d3748;
+            border-radius: 6px;
+            color: #94a3b8;
+            font-size: 0.75rem;
+            cursor: pointer;
+        }
+
+        .address-box .copy-btn:hover {
+            background: #2d3748;
+            color: #e2e8f0;
+        }
+
+        .status-msg {
+            margin-top: 12px;
+            padding: 12px 14px;
             border-radius: 8px;
-            color: #4ade80;
+            font-size: 0.85rem;
             display: none;
-            word-wrap: break-word;
         }
 
-        .step {
-            margin: 25px 0;
-            padding-bottom: 25px;
-            border-bottom: 1px solid #2d3342;
-            text-align: left;
+        .status-msg.info {
+            background: #1e2f4a;
+            color: #60a5fa;
+            display: block;
         }
 
-        .step:last-child {
-            border-bottom: none;
+        .status-msg.success {
+            background: #0d2b1e;
+            color: #4ade80;
+            display: block;
         }
 
-        p {
-            margin: 5px 0;
-            color: #aaa;
+        .status-msg.error {
+            background: #2b0d0d;
+            color: #f87171;
+            display: block;
         }
 
-        .wallet-status {
-            color: #f7931a;
+        .wallet-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            background: #0d2b1e;
+            border: 1px solid #22c55e44;
+            border-radius: 999px;
             font-family: monospace;
+            font-size: 0.78rem;
+            color: #4ade80;
+        }
+
+        .wallet-badge::before {
+            content: '●';
+            color: #22c55e;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 3px;
+            background: #1e2533;
+            border-radius: 2px;
+            margin-bottom: 8px;
+            overflow: hidden;
+        }
+
+        .progress-bar .fill {
+            height: 100%;
+            background: #f7931a;
+            border-radius: 2px;
+            width: 0%;
+            transition: width 0.5s ease;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
         }
     </style>
 </head>
 
 <body>
-    <div class="container">
-        <h1>Manual Factory Deployer</h1>
-        <p style="margin-bottom: 30px;">Deploy your `factory.wasm` directly via OPWallet.</p>
 
-        <div class="step">
-            <p><b>Step 1:</b> Connect OPWallet (Testnet)</p>
-            <button id="btn-connect">Connect Wallet</button>
-            <div id="wallet-status" class="wallet-status" style="margin-top: 10px;"></div>
+    <header>
+        <h1>⚙️ OPNet Factory Deployer</h1>
+        <p>Deploy and initialize your OP-20 token factory in 4 steps.</p>
+    </header>
+
+    <div class="stepper" id="stepper">
+
+        <!-- STEP 1: Connect Wallet -->
+        <div class="step-card active" id="step-1">
+            <div class="step-header">
+                <div class="step-num">1</div>
+                <div>
+                    <div class="step-title">Connect OPWallet</div>
+                    <div class="step-desc">Connect your testnet OPWallet to sign transactions.</div>
+                </div>
+            </div>
+            <button class="btn" id="btn-connect">Connect Wallet</button>
+            <div id="wallet-display" style="margin-top:12px; display:none;"></div>
+            <div class="status-msg" id="status-1"></div>
         </div>
 
-        <div class="step">
-            <p><b>Step 2:</b> Select Contract WASM</p>
-            <input type="file" id="file-input" accept=".wasm" />
+        <!-- STEP 2: Deploy Token Template -->
+        <div class="step-card locked" id="step-2">
+            <div class="step-header">
+                <div class="step-num">2</div>
+                <div>
+                    <div class="step-title">Deploy Token Template</div>
+                    <div class="step-desc">Upload <code>build/MyToken.wasm</code> and deploy it as the base token
+                        template.</div>
+                </div>
+            </div>
+            <input type="file" id="token-file" accept=".wasm" style="margin: 12px 0; color: #94a3b8; width: 100%;" />
+            <button class="btn" id="btn-deploy-token" disabled>🚀 Deploy Token Template</button>
+            <div id="token-progress" class="progress-bar" style="display:none;">
+                <div class="fill" id="token-fill"></div>
+            </div>
+            <div id="token-address-box" class="address-box" style="display:none;">
+                <label>Token Template Address</label>
+                <div class="addr" id="token-address"></div>
+                <button class="copy-btn" onclick="copyAddr('token-address', this)">Copy</button>
+            </div>
+            <div class="status-msg" id="status-2"></div>
         </div>
 
-        <div class="step">
-            <p><b>Step 3:</b> Deploy to OPNet</p>
-            <button id="btn-deploy" disabled>Sign & Deploy Contract</button>
-            <div id="status"></div>
+        <!-- STEP 3: Deploy Factory -->
+        <div class="step-card locked" id="step-3">
+            <div class="step-header">
+                <div class="step-num">3</div>
+                <div>
+                    <div class="step-title">Deploy Factory</div>
+                    <div class="step-desc">Upload <code>build/MyFactory.wasm</code> and deploy the factory contract.
+                    </div>
+                </div>
+            </div>
+            <input type="file" id="factory-file" accept=".wasm" style="margin: 12px 0; color: #94a3b8; width: 100%;" />
+            <button class="btn" id="btn-deploy-factory" disabled>🚀 Deploy Factory</button>
+            <div id="factory-progress" class="progress-bar" style="display:none;">
+                <div class="fill" id="factory-fill"></div>
+            </div>
+            <div id="factory-address-box" class="address-box" style="display:none;">
+                <label>Factory Contract Address</label>
+                <div class="addr" id="factory-address"></div>
+                <button class="copy-btn" onclick="copyAddr('factory-address', this)">Copy</button>
+            </div>
+            <div class="status-msg" id="status-3"></div>
         </div>
+
+        <!-- STEP 4: Initialize Factory -->
+        <div class="step-card locked" id="step-4">
+            <div class="step-header">
+                <div class="step-num">4</div>
+                <div>
+                    <div class="step-title">Initialize Factory</div>
+                    <div class="step-desc">Link the token template and fee recipient to the factory. Required before
+                        anyone can create tokens.</div>
+                </div>
+            </div>
+            <div style="margin: 12px 0;">
+                <label style="font-size:0.78rem; color:#64748b; display:block; margin-bottom:4px;">Token Template
+                    Address</label>
+                <input type="text" id="init-token-addr" placeholder="opt1p..." readonly
+                    style="width:100%; padding:10px 12px; background:#0a0c12; border:1px solid #1e2533; border-radius:8px; color:#4ade80; font-family:monospace; font-size:0.82rem;" />
+            </div>
+            <div style="margin: 12px 0;">
+                <label style="font-size:0.78rem; color:#64748b; display:block; margin-bottom:4px;">Fee Recipient (your
+                    wallet address)</label>
+                <input type="text" id="init-fee-recipient" placeholder="opt1p..."
+                    style="width:100%; padding:10px 12px; background:#0a0c12; border:1px solid #1e2533; border-radius:8px; color:#60a5fa; font-family:monospace; font-size:0.82rem;" />
+            </div>
+            <button class="btn" id="btn-init" disabled>⚡ Initialize Factory</button>
+            <div id="init-progress" class="progress-bar" style="display:none;">
+                <div class="fill" id="init-fill"></div>
+            </div>
+            <div class="status-msg" id="status-4"></div>
+        </div>
+
     </div>
 
     <script type="module" src="/deploy-factory.js"></script>

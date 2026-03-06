@@ -12,5 +12,13 @@ export default defineConfig({
     ],
     define: {
         'process.env': {}
+    },
+    build: {
+        rollupOptions: {
+            input: {
+                main: 'index.html',
+                deploy: 'deploy-factory.html'
+            }
+        }
     }
 });

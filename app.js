@@ -10,7 +10,7 @@
 // ============================================================
 const CONFIG = Object.freeze({
     /** Replace with your deployed factory contract address */
-    FACTORY_ADDRESS: 'opt1sqqrt069k348lqu0qtyrs5qt9ql786rflquarwwe2',
+    FACTORY_ADDRESS: 'tb1paqkndg6j8wzjz87dr2y5mgtx0y9rz7nrfyj6kzvvm69as99jud2s5wk5tm',
     NETWORK: 'testnet',
     // NOTE: These must be string literals — Vite production builds can break
     // object property access if the whole object gets mangled during minification.
@@ -23,7 +23,7 @@ const CONFIG = Object.freeze({
 // Standalone string constants — immune to Vite minification/mangling.
 // Use these instead of CONFIG.* in SDK calls.
 const RPC_URL = 'https://testnet.opnet.org';
-const FACTORY_ADDRESS = 'opt1sqqrt069k348lqu0qtyrs5qt9ql786rflquarwwe2';
+const FACTORY_ADDRESS = 'tb1paqkndg6j8wzjz87dr2y5mgtx0y9rz7nrfyj6kzvvm69as99jud2s5wk5tm';
 
 
 // ============================================================

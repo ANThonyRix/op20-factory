@@ -1,116 +1,199 @@
-import { JSONRpcProvider } from 'opnet';
-import { TransactionFactory } from '@btc-vision/transaction';
+/**
+ * deploy-factory.js
+ *
+ * Multi-step factory deployment UI:
+ *   Step 1 — Connect OPWallet
+ *   Step 2 — Deploy MyToken.wasm (token template) [SKIPPED FOR NOW]
+ *   Step 3 — Deploy MyFactory.wasm (factory contract) [SKIPPED FOR NOW]
+ *   Step 4 — Initialize factory (link template + fee recipient)
+ */
+
+import { TransactionFactory, BinaryWriter, Address, OPNetLimitedProvider } from '@btc-vision/transaction';
 import { networks } from '@btc-vision/bitcoin';
 
-const CONFIG = {
-    NETWORK: networks.opnetTestnet,
-    RPC_URL: 'https://testnet.opnet.org',
+// ── Config ───────────────────────────────────────────────────────────────────
+const NETWORK = networks.testnet;
+const RPC_URL = 'https://testnet.opnet.org';
+
+// ── State ────────────────────────────────────────────────────────────────────
+const state = {
+    walletAddress: null,
+    tokenAddress: '0x16c0119259ec5422fcc3acaf33401435098b85c902a27ae864e090be5e8d42c1',
+    factoryAddress: 'tb1paqkndg6j8wzjz87dr2y5mgtx0y9rz7nrfyj6kzvvm69as99jud2s5wk5tm',
 };
 
-const provider = new JSONRpcProvider({ url: CONFIG.RPC_URL, network: CONFIG.NETWORK });
-const factory = new TransactionFactory();
-
-let walletAddress = null;
-let bytecode = null;
-
+// ── DOM Refs ─────────────────────────────────────────────────────────────────
 const dom = {
     btnConnect: document.getElementById('btn-connect'),
-    walletStatus: document.getElementById('wallet-status'),
-    fileInput: document.getElementById('file-input'),
-    btnDeploy: document.getElementById('btn-deploy'),
-    status: document.getElementById('status'),
+    walletDisplay: document.getElementById('wallet-display'),
+    step: (n) => document.getElementById(`step-${n}`),
+    status: (n) => document.getElementById(`status-${n}`),
+
+    initTokenAddr: document.getElementById('init-token-addr'),
+    initFeeRecip: document.getElementById('init-fee-recipient'),
+    btnInit: document.getElementById('btn-init'),
+    initProgress: document.getElementById('init-progress'),
+    initFill: document.getElementById('init-fill'),
 };
 
-function checkReady() {
-    dom.btnDeploy.disabled = !(walletAddress && bytecode);
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function setStatus(step, type, msg) {
+    const el = dom.status(step);
+    if (!el) return;
+    el.className = `status-msg ${type}`;
+    el.innerHTML = msg;
 }
 
-function showStatus(text, isError = false) {
-    dom.status.style.display = 'block';
-    dom.status.style.color = isError ? '#ef4444' : '#4ade80';
-    dom.status.innerHTML = text;
+function activateStep(n) {
+    for (let i = 1; i <= 4; i++) {
+        const card = dom.step(i);
+        if (!card) continue;
+        if (i < n) {
+            card.className = 'step-card done';
+            card.style.pointerEvents = 'none';
+        } else if (i === n) {
+            card.className = 'step-card active';
+        } else {
+            card.className = 'step-card locked';
+        }
+    }
 }
 
-// 1. Connect Wallet
+function startProgress(fillEl, progressEl) {
+    if (!fillEl || !progressEl) return () => { };
+    progressEl.style.display = 'block';
+    let w = 0;
+    const t = setInterval(() => { if (w < 90) { w += Math.random() * 8; fillEl.style.width = `${Math.min(w, 90)}%`; } }, 400);
+    return () => { clearInterval(t); fillEl.style.width = '100%'; setTimeout(() => progressEl.style.display = 'none', 800); };
+}
+
+// ── Step 1: Connect Wallet ────────────────────────────────────────────────────
 dom.btnConnect.addEventListener('click', async () => {
     try {
-        if (!window.unisat) throw new Error('OPWallet extension not found!');
-        const accounts = await window.unisat.requestAccounts();
-        if (accounts.length > 0) {
-            walletAddress = accounts[0];
-            dom.walletStatus.textContent = `✅ Connected: ${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`;
-            dom.btnConnect.style.display = 'none';
-            checkReady();
-        }
+        dom.btnConnect.disabled = true;
+        setStatus(1, 'info', 'Connecting to OPWallet...');
+
+        const walletProvider = window.opnet || window.unisat;
+        if (!walletProvider) throw new Error('OPWallet extension not found. Please install OPWallet.');
+
+        const accounts = await walletProvider.requestAccounts();
+        if (!accounts || accounts.length === 0) throw new Error('No accounts returned.');
+
+        const raw = accounts[0];
+        state.walletAddress = typeof raw === 'object'
+            ? (raw.p2op || raw.address || raw.p2tr || String(raw))
+            : raw;
+
+        dom.walletDisplay.style.display = 'block';
+        dom.walletDisplay.innerHTML = `<div class="wallet-badge">${state.walletAddress.slice(0, 12)}...${state.walletAddress.slice(-6)}</div>`;
+        dom.btnConnect.textContent = '✓ Connected';
+
+        setStatus(1, 'success', '✅ Wallet connected!');
+
+        // Jump straight to Step 4 since Factory & Token Template are deployed
+        dom.initTokenAddr.value = state.tokenAddress;
+        dom.initFeeRecip.value = state.walletAddress;
+        dom.btnInit.disabled = false;
+        activateStep(4);
+
     } catch (err) {
-        showStatus('Connection failed: ' + err.message, true);
+        setStatus(1, 'error', `❌ ${err.message}`);
+        dom.btnConnect.disabled = false;
     }
 });
 
-// 2. Read WASM
-dom.fileInput.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (!file) {
-        bytecode = null;
-        checkReady();
-        return;
-    }
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-        bytecode = new Uint8Array(ev.target.result);
-        checkReady();
-    };
-    reader.readAsArrayBuffer(file);
-});
-
-// 3. Deploy
-dom.btnDeploy.addEventListener('click', async () => {
+// ── Step 4: Initialize Factory ────────────────────────────────────────────────
+dom.btnInit.addEventListener('click', async () => {
     try {
-        dom.btnDeploy.disabled = true;
-        showStatus('Gathering UTXOs... Please wait.');
+        dom.btnInit.disabled = true;
+        const feeRecipient = dom.initFeeRecip.value.trim();
+        const tokenTemplateValue = dom.initTokenAddr.value.trim();
 
-        const utxos = await provider.utxoManager.getUTXOs({ address: walletAddress });
-        if (!utxos || utxos.length === 0) {
-            throw new Error('No UTXOs found! You need testnet BTC to deploy.');
+        if (!feeRecipient || !tokenTemplateValue) {
+            throw new Error('Fee recipient and token template address are required.');
         }
 
-        showStatus('Fetching network challenge...');
-        const challenge = await provider.getChallenge();
+        setStatus(4, 'info', '⚡ Building transaction...<br><small>Check OPWallet for a signing popup!</small>');
+        const done = startProgress(dom.initFill, dom.initProgress);
 
-        showStatus('Check your OPWallet popup!<br>Please sign the deployment transaction...');
+        const provider = new OPNetLimitedProvider(RPC_URL);
 
-        const params = {
-            from: walletAddress,
+        // 1. Fetch UTXOs
+        console.log('Fetching UTXOs for:', state.walletAddress);
+        const utxos = await provider.fetchUTXO({
+            address: state.walletAddress,
+            minAmount: 10_000n,
+            requestedAmount: 500_000n,
+        });
+
+        if (!utxos || utxos.length === 0) {
+            throw new Error('No UTXOs found for wallet.');
+        }
+
+        // 2. Encode calldata: selector + address + address
+        const calldata = new BinaryWriter();
+        // Selector for initialize(address,address)
+        calldata.writeSelector(0x67758e02);
+
+        // First param: Token Template Address
+        let templateHex = tokenTemplateValue;
+        if (!tokenTemplateValue.startsWith('0x')) {
+            // Already have the hex from deployment TX
+            templateHex = '0x16c0119259ec5422fcc3acaf33401435098b85c902a27ae864e090be5e8d42c1';
+        }
+        const templateAddr = Address.fromString(templateHex);
+        calldata.writeAddress(templateAddr);
+
+        // Second param: Fee Recipient Address
+        const feeRecipientAddr = Address.fromString(feeRecipient);
+        calldata.writeAddress(feeRecipientAddr);
+
+        // 3. Build the interaction transaction
+        const factory = new TransactionFactory();
+
+        console.log('Requesting OPWallet to sign interaction...');
+        // Note: For OPWallet, signer and mldsaSigner are omitted. 
+        // OPWallet automatically handles the challenge under the hood.
+        const result = await factory.signInteraction({
+            network: NETWORK,
             utxos: utxos,
-            signer: null, // Signals OPWallet to sign
-            mldsaSigner: null,
-            network: CONFIG.NETWORK,
-            feeRate: 200,          // standard fee rate
-            priorityFee: 0n,
-            gasSatFee: 15_000n,    // Deployment gas cost (bumped for safety)
-            bytecode: bytecode,
-            challenge: challenge,
-            linkMLDSAPublicKeyToAddress: true,
-            revealMLDSAPublicKey: true,
-        };
+            from: state.walletAddress,
+            to: state.factoryAddress,
+            feeRate: 200,
+            priorityFee: 330n,
+            gasSatFee: 15_000n, // Assuming 15000 is enough
+            calldata: calldata.getBuffer()
+        });
 
-        const deployment = await factory.signDeployment(params);
+        console.log('Transaction signed! Result:', result);
+        setStatus(4, 'info', '🚀 Transactions signed! Broadcasting now...');
 
-        showStatus('Broadcasting Funding Tx...');
-        const fundRes = await provider.sendRawTransaction(deployment.transaction[0]);
+        const walletProvider = window.opnet || window.unisat;
 
-        showStatus('Broadcasting Reveal Tx...');
-        const revealRes = await provider.sendRawTransaction(deployment.transaction[1]);
+        // 4. Broadcast funding TX first (if applicable)
+        if (result.fundingTransaction) {
+            console.log('Broadcasting funding tx...');
+            await walletProvider.pushTx(result.fundingTransaction);
+        }
 
-        showStatus(`
-            <b style="color: #f7931a;font-size: 20px;">🚀 Deployment Successful!</b><br><br>
-            <span style="color:#fff;">Contract Address:</span><br>
-            <b style="user-select:all;word-break:break-all;">${deployment.contractAddress}</b><br><br>
-            <span style="color:#aaa;font-size:14px;">Copy this address and replace FACTORY_ADDRESS in app.js!</span>
+        // 5. Broadcast interaction TX
+        console.log('Broadcasting interaction tx...');
+        const txId = await walletProvider.pushTx(result.interactionTransaction);
+
+        done();
+
+        console.log('Initialize receipt txId:', txId);
+        setStatus(4, 'success', `
+            ✅ Factory initialized!<br><br>
+            <b>Transaction ID:</b><br>
+            <a href="https://testnet.opnet.org/tx/${txId}" target="_blank" style="color:var(--accent); word-break:break-all;">${txId}</a>
         `);
+
     } catch (err) {
-        console.error(err);
-        showStatus('<b>Error:</b> ' + (err.message || err.toString()), true);
-        dom.btnDeploy.disabled = false;
+        console.error('Initialize error:', err);
+        const done = startProgress(dom.initFill, dom.initProgress);
+        done();
+        setStatus(4, 'error', `❌ ${err.message || err}`);
+        dom.btnInit.disabled = false;
     }
 });
