@@ -307,11 +307,11 @@ async function deployToken(name, symbol, totalSupply) {
     });
 
     // ── STEP 0: Import SDK modules ─────────────────────────────────────────
-    let getContract, JSONRpcProvider, BitcoinUtils, networks;
+    let getContract, JSONRpcProvider, BitcoinUtils, networks, Address;
     try {
         ({ getContract, JSONRpcProvider, BitcoinUtils } = await import('opnet'));
         ({ networks } = await import('@btc-vision/bitcoin'));
-        // Note: ABIDataTypes & BitcoinAbiTypes are NOT used — we use string literals below
+        ({ Address } = await import('@btc-vision/transaction'));
         console.log('✅ STEP 0: SDK imports OK');
     } catch (e) {
         console.error('❌ STEP 0 FAILED: SDK import error:', e);
@@ -331,11 +331,20 @@ async function deployToken(name, symbol, totalSupply) {
         throw e;
     }
 
-    // ── STEP 2: Use wallet address directly (OPWallet handles signing) ──────
-    // getPublicKeyInfo is NOT needed when OPWallet is the signer.
-    // Passing the bech32 address string directly is correct for OPWallet flows.
-    const senderAddress = state.walletAddress;
-    console.log('✅ STEP 2: Using wallet address directly:', senderAddress);
+    // ── STEP 2: Use wallet public key to derive Address ──────────────────────
+    let senderAddress;
+    try {
+        const walletProvider = window.opnet || window.unisat;
+        const pubKeyHex = await walletProvider.getPublicKey();
+        console.log('👜 Wallet public key fetched:', pubKeyHex);
+
+        // Address.fromPubKey is the standard way in @btc-vision/transaction
+        senderAddress = Address.fromString(pubKeyHex);
+        console.log('✅ STEP 2: Derived senderAddress object:', senderAddress);
+    } catch (e) {
+        console.error('❌ STEP 2 FAILED: Public key / Address derivation error:', e);
+        throw e;
+    }
 
     // ── STEP 3: Build ABI and contract ─────────────────────────────────────
     let factory, supplyBig;
