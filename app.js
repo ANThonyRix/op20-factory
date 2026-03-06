@@ -10,7 +10,7 @@
 // ============================================================
 const CONFIG = Object.freeze({
     /** Replace with your deployed factory contract address */
-    FACTORY_ADDRESS: 'tb1paqkndg6j8wzjz87dr2y5mgtx0y9rz7nrfyj6kzvvm69as99jud2s5wk5tm',
+    FACTORY_ADDRESS: 'opt1sqqhyvt2k447y8qjdf0v2hnl785qxhh2x8c7qece6',
     NETWORK: 'testnet',
     // NOTE: These must be string literals — Vite production builds can break
     // object property access if the whole object gets mangled during minification.
@@ -23,7 +23,7 @@ const CONFIG = Object.freeze({
 // Standalone string constants — immune to Vite minification/mangling.
 // Use these instead of CONFIG.* in SDK calls.
 const RPC_URL = 'https://testnet.opnet.org';
-const FACTORY_ADDRESS = 'tb1paqkndg6j8wzjz87dr2y5mgtx0y9rz7nrfyj6kzvvm69as99jud2s5wk5tm';
+const FACTORY_ADDRESS = 'opt1sqqhyvt2k447y8qjdf0v2hnl785qxhh2x8c7qece6';
 
 
 // ============================================================
@@ -321,7 +321,7 @@ async function deployToken(name, symbol, totalSupply) {
     // ── STEP 1: Create provider ─────────────────────────────────────────────
     let provider, network;
     try {
-        network = networks.opnetTestnet;
+        network = networks.testnet;
         // Pass URL and network as positional args — the bundled SDK uses (url, network) signature
         console.log('🔄 STEP 1: Creating provider with URL:', RPC_URL, 'type:', typeof RPC_URL);
         provider = new JSONRpcProvider(RPC_URL, network);
