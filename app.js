@@ -340,11 +340,11 @@ async function deployToken(name, symbol, totalSupply) {
     // ── STEP 3: Build ABI and contract ─────────────────────────────────────
     let factory, supplyBig;
     try {
-        // ABI using exact SDK string values (from ABIDataTypes enum: STRING='STRING', etc.)
-        // BitcoinAbiTypes.Function does NOT exist — omit the 'type' field entirely.
+        // Use 'function' (lowercase) for SDK method registration.
         const FACTORY_ABI = [
             {
                 name: 'deployToken',
+                type: 'function',
                 inputs: [
                     { name: 'name', type: 'STRING' },
                     { name: 'symbol', type: 'STRING' },
