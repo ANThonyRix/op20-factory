@@ -823,19 +823,6 @@ document.addEventListener('keydown', (e) => {
 });
 
 // ============================================================
-// Initialization
-// ============================================================
-
-// Load persisted tokens & render
-loadTokens();
-renderTokensList();
-updateLaunchButton();
-updateGlobalCounter();
-
-// Auto-refresh "time ago" labels
-setInterval(refreshTimeLabels, CONFIG.TIME_REFRESH_MS);
-
-// ============================================================
 // Global Token Counter
 // ============================================================
 
@@ -850,3 +837,18 @@ function updateGlobalCounter() {
     el.classList.add('bump');
     setTimeout(() => el.classList.remove('bump'), 300);
 }
+
+
+// ============================================================
+// Initialization
+// ============================================================
+
+// Load persisted tokens & render
+loadTokens();
+renderTokensList();
+updateLaunchButton();
+updateGlobalCounter();
+
+// Auto-refresh "time ago" labels
+setInterval(refreshTimeLabels, CONFIG.TIME_REFRESH_MS);
+
