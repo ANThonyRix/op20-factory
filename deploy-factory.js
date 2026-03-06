@@ -19,7 +19,7 @@ const RPC_URL = 'https://testnet.opnet.org';
 const state = {
     walletAddress: null,
     tokenAddress: '0x16c0119259ec5422fcc3acaf33401435098b85c902a27ae864e090be5e8d42c1',
-    factoryAddress: 'tb1paqkndg6j8wzjz87dr2y5mgtx0y9rz7nrfyj6kzvvm69as99jud2s5wk5tm',
+    factoryAddress: '0x2aaf4fcfe7e3e04579454f7819ddc1474b066de2365999742924e700699510ed5',
 };
 
 // ── DOM Refs ─────────────────────────────────────────────────────────────────
@@ -158,7 +158,7 @@ dom.btnInit.addEventListener('click', async () => {
             network: NETWORK,
             utxos: utxos,
             from: state.walletAddress,
-            to: state.factoryAddress,
+            to: Address.fromString(state.factoryAddress),
             feeRate: 200,
             priorityFee: 330n,
             gasSatFee: 15_000n, // Assuming 15000 is enough
