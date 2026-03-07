@@ -23,7 +23,7 @@ const CONFIG = Object.freeze({
 // Standalone string constants — immune to Vite minification/mangling.
 // Use these instead of CONFIG.* in SDK calls.
 const RPC_URL = 'https://testnet.opnet.org';
-const FACTORY_ADDRESS = 'opt1sqqhyvt2k447y8qjdf0v2hnl785qxhh2x8c7qece6';
+const FACTORY_ADDRESS = 'opt1sqpuq4tha259jg9nswlq94sfj2fm56wh4xsg2fhpd';
 
 
 // ============================================================

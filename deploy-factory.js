@@ -18,8 +18,8 @@ const RPC_URL = 'https://testnet.opnet.org';
 // ── State ────────────────────────────────────────────────────────────────────
 const state = {
     walletAddress: null,
-    tokenAddress: '0x16c0119259ec5422fcc3acaf33401435098b85c902a27ae864e090be5e8d42c1',
-    factoryAddress: '0x2aaf4fcfe7e3e04579454f7819ddc1474b066de2365999742924e700699510ed5',
+    tokenAddress: 'opt1sqre2kfrw9eqwzrfmjl2u2cpx4t0k46l5euc4atw5',  // MyToken template
+    factoryAddress: 'opt1sqpuq4tha259jg9nswlq94sfj2fm56wh4xsg2fhpd',  // MyFactory
 };
 
 // ── DOM Refs ─────────────────────────────────────────────────────────────────
@@ -135,13 +135,7 @@ dom.btnInit.addEventListener('click', async () => {
         // Selector for initialize(address,address)
         calldata.writeSelector(0x67758e02);
 
-        // First param: Token Template Address
-        let templateHex = tokenTemplateValue;
-        if (!tokenTemplateValue.startsWith('0x')) {
-            // Already have the hex from deployment TX
-            templateHex = '0x16c0119259ec5422fcc3acaf33401435098b85c902a27ae864e090be5e8d42c1';
-        }
-        const templateAddr = Address.fromString(templateHex);
+        const templateAddr = Address.fromString(tokenTemplateValue);
         calldata.writeAddress(templateAddr);
 
         // Second param: Fee Recipient Address
