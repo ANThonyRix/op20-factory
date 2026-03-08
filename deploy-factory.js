@@ -13,7 +13,7 @@ import { networks } from '@btc-vision/bitcoin';
 
 // ── Config ───────────────────────────────────────────────────────────────────
 const NETWORK = networks.testnet;
-const RPC_URL = 'https://testnet.opnet.org';
+const RPC_URL = '/api';  // proxied via Vite → https://testnet.opnet.org
 
 // ── State ────────────────────────────────────────────────────────────────────
 const state = {

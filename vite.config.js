@@ -13,6 +13,16 @@ export default defineConfig({
     define: {
         'process.env': {}
     },
+    server: {
+        proxy: {
+            '/api': {
+                target: 'https://testnet.opnet.org',
+                changeOrigin: true,
+                rewrite: (path) => path.replace(/^\/api/, ''),
+                secure: false,
+            }
+        }
+    },
     build: {
         rollupOptions: {
             input: {
