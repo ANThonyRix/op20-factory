@@ -7,6 +7,7 @@
 // ============================================================
 const CONFIG = Object.freeze({
     FACTORY_ADDRESS: 'opt1sqpuq4tha259jg9nswlq94sfj2fm56wh4xsg2fhpd', // ✅ обновлён
+    FEE_RECIPIENT: 'opt1p4k8xfkaz6zu25nhygcycxe6d3e8dxv9e4d5mfytvld75u8dvktesf973v6',
     NETWORK: 'testnet',
     RPC_URL: 'https://testnet.opnet.org',
     FEE_SATS: 10000,
@@ -230,9 +231,9 @@ async function deployToken(name, symbol, totalSupply) {
     console.log('deployToken called with:', { name, symbol, supply: totalSupply, wallet: state.walletAddress });
 
     // ── STEP 0: Import SDK ─────────────────────────────────────────────────
-    let getContract, JSONRpcProvider, BitcoinUtils, networks, Address;
+    let getContract, JSONRpcProvider, BitcoinUtils, TransactionOutputFlags, networks, Address;
     try {
-        ({ getContract, JSONRpcProvider, BitcoinUtils } = await import('opnet'));
+        ({ getContract, JSONRpcProvider, BitcoinUtils, TransactionOutputFlags } = await import('opnet'));
         ({ networks } = await import('@btc-vision/bitcoin'));
         ({ Address } = await import('@btc-vision/transaction'));
         console.log('✅ STEP 0: SDK imports OK');
@@ -284,6 +285,21 @@ async function deployToken(name, symbol, totalSupply) {
     let simulation;
     try {
         console.log('🔄 STEP 4: Simulating deployToken(', name, ',', symbol, ',', supplyBig, ')');
+
+        // Tell simulation to expect a 10,000 sat payment to FEE_RECIPIENT
+        factory.setTransactionDetails({
+            inputs: [],
+            outputs: [
+                {
+                    to: CONFIG.FEE_RECIPIENT,
+                    value: BigInt(CONFIG.FEE_SATS),
+                    index: 1,
+                    scriptPubKey: undefined,
+                    flags: TransactionOutputFlags.hasTo,
+                },
+            ],
+        });
+
         simulation = await factory.deployToken(name, symbol, supplyBig);
         console.log('✅ STEP 4: Simulation result received');
         if ('error' in simulation) throw new Error(simulation.error);
@@ -293,15 +309,22 @@ async function deployToken(name, symbol, totalSupply) {
     }
 
     // ── STEP 5: Send transaction ──────────────────────────────────────────
-    // Fee check is disabled in contract (testnet) — no priorityFee needed
     let receipt;
     try {
         console.log('🔄 STEP 5: Sending transaction...');
+
+        // Attach the actual BTC fee output to the transaction
+        const feeOutput = {
+            address: CONFIG.FEE_RECIPIENT,
+            value: CONFIG.FEE_SATS,
+        };
+
         receipt = await simulation.sendTransaction({
             signer: window.opnet || window.unisat,
             mldsaSigner: null,
             refundTo: state.walletAddress,
             feeRate: 200,
+            extraOutputs: [feeOutput],
         });
         console.log('✅ STEP 5: receipt received');
     } catch (e) {
