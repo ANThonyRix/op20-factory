@@ -380,11 +380,17 @@ async function deployToken(name, symbol, totalSupply) {
     let receipt;
     try {
         console.log('🔄 STEP 5: Sending transaction...');
+
+        // Адрес получателя fee (тот же что в initialize.mjs)
+        const FEE_RECIPIENT = 'opt1p4k8xfkaz6zu25nhygcycxe6d3e8dxv9e4d5mfytvld75u8dvktesf973v6';
+
         receipt = await simulation.sendTransaction({
-            signer: window.opnet || window.unisat,  // OPWallet as signer
+            signer: window.opnet || window.unisat,
             mldsaSigner: null,
             refundTo: state.walletAddress,
             feeRate: 200,
+            priorityFee: 10000n,          // 0.0001 BTC в сатошах
+            to: FEE_RECIPIENT,            // адрес получателя fee
         });
         console.log('✅ STEP 5: receipt received');
     } catch (e) {
