@@ -1,30 +1,21 @@
 /**
  * OP-20 Token Factory — Frontend Application
- *
- * Handles wallet connection via OPWallet, form validation,
- * contract interaction, and recently launched tokens list.
  */
 
 // ============================================================
 // Configuration
 // ============================================================
 const CONFIG = Object.freeze({
-    /** Replace with your deployed factory contract address */
-    FACTORY_ADDRESS: 'opt1sqqhyvt2k447y8qjdf0v2hnl785qxhh2x8c7qece6',
+    FACTORY_ADDRESS: 'opt1sqpuq4tha259jg9nswlq94sfj2fm56wh4xsg2fhpd', // ✅ обновлён
     NETWORK: 'testnet',
-    // NOTE: These must be string literals — Vite production builds can break
-    // object property access if the whole object gets mangled during minification.
     RPC_URL: 'https://testnet.opnet.org',
-    FEE_SATS: 10000, // 0.0001 BTC
+    FEE_SATS: 10000,
     STORAGE_KEY: 'op20_factory_launched_tokens',
-    TIME_REFRESH_MS: 30000, // Update "time ago" every 30 seconds
+    TIME_REFRESH_MS: 30000,
 });
 
-// Standalone string constants — immune to Vite minification/mangling.
-// Use these instead of CONFIG.* in SDK calls.
 const RPC_URL = 'https://testnet.opnet.org';
 const FACTORY_ADDRESS = 'opt1sqpuq4tha259jg9nswlq94sfj2fm56wh4xsg2fhpd';
-
 
 // ============================================================
 // DOM References
@@ -46,7 +37,6 @@ const dom = {
     tokensList: document.getElementById('tokens-list'),
     tokensEmpty: document.getElementById('tokens-empty'),
     tokensCount: document.getElementById('tokens-count'),
-    // Detail modal
     detailOverlay: document.getElementById('detail-overlay'),
     detailClose: document.getElementById('detail-close'),
     detailIcon: document.getElementById('detail-icon'),
@@ -58,7 +48,6 @@ const dom = {
     detailCreator: document.getElementById('detail-creator'),
     detailAddWallet: document.getElementById('detail-add-wallet'),
     detailShareTwitter: document.getElementById('detail-share-twitter'),
-    // Hero banner
     globalTokenCount: document.getElementById('global-token-count'),
 };
 
@@ -69,12 +58,12 @@ const state = {
     walletAddress: null,
     isConnected: false,
     isLaunching: false,
-    launchedTokens: [], // { name, symbol, totalSupply, creator, address, createdAt }
-    currentDetailToken: null, // token currently shown in detail modal
+    launchedTokens: [],
+    currentDetailToken: null,
 };
 
 // ============================================================
-// Sound Effects (Web Audio API — no external files)
+// Sound Effects
 // ============================================================
 const SFX = {
     _ctx: null,
@@ -82,7 +71,6 @@ const SFX = {
         if (!this._ctx) this._ctx = new (window.AudioContext || window.webkitAudioContext)();
         return this._ctx;
     },
-    /** Short click/tap sound */
     click() {
         try {
             const ctx = this._getCtx();
@@ -96,11 +84,10 @@ const SFX = {
             o.start(); o.stop(ctx.currentTime + 0.08);
         } catch { }
     },
-    /** Triumphant success fanfare */
     success() {
         try {
             const ctx = this._getCtx();
-            const notes = [523.25, 659.25, 783.99, 1046.5]; // C5 E5 G5 C6
+            const notes = [523.25, 659.25, 783.99, 1046.5];
             notes.forEach((freq, i) => {
                 const o = ctx.createOscillator();
                 const g = ctx.createGain();
@@ -114,7 +101,6 @@ const SFX = {
             });
         } catch { }
     },
-    /** Error buzz */
     error() {
         try {
             const ctx = this._getCtx();
@@ -128,7 +114,6 @@ const SFX = {
             o.start(); o.stop(ctx.currentTime + 0.2);
         } catch { }
     },
-    /** Subtle copy/tic sound */
     copy() {
         try {
             const ctx = this._getCtx();
@@ -147,47 +132,31 @@ const SFX = {
 // ============================================================
 // Wallet Detection
 // ============================================================
-
-/**
- * Checks if OPWallet extension is available.
- * @returns {boolean} True if OPWallet is detected
- */
 function isWalletAvailable() {
     return typeof window !== 'undefined' && (typeof window.unisat !== 'undefined' || typeof window.opnet !== 'undefined');
 }
 
-/**
- * Truncates a wallet address for display.
- * @param {string} address - Full wallet address
- * @returns {string} Truncated address like "bc1q...x4f2"
- */
 function truncateAddress(address) {
     if (!address || address.length < 12) return address;
     return address.slice(0, 6) + '...' + address.slice(-4);
 }
 
-/**
- * Connects to OPWallet or prompts installation.
- */
 async function connectWallet() {
     if (state.isConnected) {
         disconnectWallet();
         return;
     }
-
     if (!isWalletAvailable()) {
         window.open('https://opnet.org', '_blank');
         showError('OPWallet not detected. Please install it first.');
         return;
     }
-
     try {
         const provider = window.opnet || window.unisat;
         const accounts = await provider.requestAccounts();
         console.log('👜 Wallet accounts returned:', accounts);
         if (accounts && accounts.length > 0) {
             const raw = accounts[0];
-            // OPWallet may return an object instead of a plain string
             if (typeof raw === 'object' && raw !== null) {
                 state.walletAddress = raw.address || raw.p2tr || raw.p2wpkh || String(raw);
             } else {
@@ -206,9 +175,6 @@ async function connectWallet() {
     }
 }
 
-/**
- * Disconnects the wallet.
- */
 function disconnectWallet() {
     state.walletAddress = null;
     state.isConnected = false;
@@ -216,9 +182,6 @@ function disconnectWallet() {
     updateLaunchButton();
 }
 
-/**
- * Updates the wallet button appearance based on connection state.
- */
 function updateWalletUI() {
     if (state.isConnected) {
         dom.btnWallet.classList.add('connected');
@@ -232,11 +195,6 @@ function updateWalletUI() {
 // ============================================================
 // Form Validation
 // ============================================================
-
-/**
- * Validates form inputs.
- * @returns {{ valid: boolean, error?: string }}
- */
 function validateForm() {
     const name = dom.inputName.value.trim();
     const symbol = dom.inputSymbol.value.trim();
@@ -244,69 +202,34 @@ function validateForm() {
 
     if (!name) return { valid: false, error: 'Token name is required.' };
     if (name.length > 32) return { valid: false, error: 'Token name must be 32 characters or less.' };
-
     if (!symbol) return { valid: false, error: 'Token symbol is required.' };
     if (symbol.length > 6) return { valid: false, error: 'Token symbol must be 6 characters or less.' };
     if (!/^[A-Z]+$/.test(symbol)) return { valid: false, error: 'Token symbol must be uppercase letters only.' };
-
     if (!supply) return { valid: false, error: 'Total supply is required.' };
 
     const supplyNum = Number(supply.replace(/,/g, ''));
-    if (isNaN(supplyNum) || supplyNum < 1) {
-        return { valid: false, error: 'Total supply must be at least 1.' };
-    }
-    if (!Number.isInteger(supplyNum)) {
-        return { valid: false, error: 'Total supply must be a whole number.' };
-    }
-    if (supplyNum > 1_000_000_000_000) {
-        return { valid: false, error: 'Total supply cannot exceed 1 trillion.' };
-    }
+    if (isNaN(supplyNum) || supplyNum < 1) return { valid: false, error: 'Total supply must be at least 1.' };
+    if (!Number.isInteger(supplyNum)) return { valid: false, error: 'Total supply must be a whole number.' };
+    if (supplyNum > 1_000_000_000_000) return { valid: false, error: 'Total supply cannot exceed 1 trillion.' };
 
     return { valid: true };
 }
 
-/**
- * Updates the Launch button disabled state.
- */
 function updateLaunchButton() {
     const hasInput =
         dom.inputName.value.trim() &&
         dom.inputSymbol.value.trim() &&
         dom.inputSupply.value.trim();
-
     dom.btnLaunch.disabled = !hasInput || state.isLaunching;
 }
 
 // ============================================================
 // Contract Interaction
 // ============================================================
-
-/**
- * Deploys a new token through the factory contract.
- *
- * Uses the OPNet SDK pattern:
- *   1. Get a contract reference
- *   2. Simulate the call
- *   3. Send the transaction (signer: null — OPWallet signs)
- *
- * @param {string} name - Token name
- * @param {string} symbol - Token symbol
- * @param {string} totalSupply - Total supply as a string
- * @returns {Promise<string>} The deployed token contract address
- */
 async function deployToken(name, symbol, totalSupply) {
-    console.log('deployToken called with:', {
-        name: name,
-        nameType: typeof name,
-        symbol: symbol,
-        symbolType: typeof symbol,
-        supply: totalSupply,
-        supplyType: typeof totalSupply,
-        wallet: state.walletAddress,
-        walletType: typeof state.walletAddress
-    });
+    console.log('deployToken called with:', { name, symbol, supply: totalSupply, wallet: state.walletAddress });
 
-    // ── STEP 0: Import SDK modules ─────────────────────────────────────────
+    // ── STEP 0: Import SDK ─────────────────────────────────────────────────
     let getContract, JSONRpcProvider, BitcoinUtils, networks, Address;
     try {
         ({ getContract, JSONRpcProvider, BitcoinUtils } = await import('opnet'));
@@ -314,30 +237,27 @@ async function deployToken(name, symbol, totalSupply) {
         ({ Address } = await import('@btc-vision/transaction'));
         console.log('✅ STEP 0: SDK imports OK');
     } catch (e) {
-        console.error('❌ STEP 0 FAILED: SDK import error:', e);
+        console.error('❌ STEP 0 FAILED:', e);
         throw e;
     }
 
-    // ── STEP 1: Create provider ─────────────────────────────────────────────
+    // ── STEP 1: Create provider ────────────────────────────────────────────
     let provider, network;
     try {
         network = networks.testnet;
-        // Pass URL and network as positional args — the bundled SDK uses (url, network) signature
-        console.log('🔄 STEP 1: Creating provider with URL:', RPC_URL, 'type:', typeof RPC_URL);
+        console.log('🔄 STEP 1: Creating provider with URL:', RPC_URL);
         provider = new JSONRpcProvider(RPC_URL, network);
         console.log('✅ STEP 1: Provider created successfully.');
     } catch (e) {
-        console.error('❌ STEP 1 FAILED: JSONRpcProvider creation error:', e);
+        console.error('❌ STEP 1 FAILED:', e);
         throw e;
     }
 
-    // ── STEP 2: Skip manual Address creation — OPWallet handles signing ────────
     console.log('✅ STEP 2: Using null sender — OPWallet will sign');
 
-    // ── STEP 3: Build ABI and contract ─────────────────────────────────────
+    // ── STEP 3: Build contract ─────────────────────────────────────────────
     let factory, supplyBig;
     try {
-        // Use 'function' (lowercase) for SDK method registration.
         const FACTORY_ABI = [
             {
                 name: 'deployToken',
@@ -352,53 +272,44 @@ async function deployToken(name, symbol, totalSupply) {
                 ],
             },
         ];
-        // Pass undefined as `from` — OPWallet injects signer at sendTransaction
         factory = getContract(FACTORY_ADDRESS, FACTORY_ABI, provider, network, undefined);
-        // Convert supply string → BigInt before passing to SDK
         supplyBig = BitcoinUtils.expandToDecimals(BigInt(totalSupply), 18);
         console.log('✅ STEP 3: Contract built. supplyBig:', supplyBig.toString());
     } catch (e) {
-        console.error('❌ STEP 3 FAILED: getContract/ABI build error:', e);
+        console.error('❌ STEP 3 FAILED:', e);
         throw e;
     }
 
-    // ── STEP 4: Simulate deployToken ────────────────────────────────────────
+    // ── STEP 4: Simulate ──────────────────────────────────────────────────
     let simulation;
     try {
         console.log('🔄 STEP 4: Simulating deployToken(', name, ',', symbol, ',', supplyBig, ')');
         simulation = await factory.deployToken(name, symbol, supplyBig);
         console.log('✅ STEP 4: Simulation result received');
-        if ('error' in simulation) {
-            throw new Error(simulation.error);
-        }
+        if ('error' in simulation) throw new Error(simulation.error);
     } catch (e) {
-        console.error('❌ STEP 4 FAILED: factory.deployToken simulation error:', e);
+        console.error('❌ STEP 4 FAILED:', e);
         throw e;
     }
 
-    // ── STEP 5: Send transaction via OPWallet ───────────────────────────────
+    // ── STEP 5: Send transaction ──────────────────────────────────────────
+    // Fee check is disabled in contract (testnet) — no priorityFee needed
     let receipt;
     try {
         console.log('🔄 STEP 5: Sending transaction...');
-
-        // Адрес получателя fee (тот же что в initialize.mjs)
-        const FEE_RECIPIENT = 'opt1p4k8xfkaz6zu25nhygcycxe6d3e8dxv9e4d5mfytvld75u8dvktesf973v6';
-
         receipt = await simulation.sendTransaction({
             signer: window.opnet || window.unisat,
             mldsaSigner: null,
             refundTo: state.walletAddress,
             feeRate: 200,
-            priorityFee: 10000n,          // 0.0001 BTC в сатошах
-            to: FEE_RECIPIENT,            // адрес получателя fee
         });
         console.log('✅ STEP 5: receipt received');
     } catch (e) {
-        console.error('❌ STEP 5 FAILED: sendTransaction error:', e);
+        console.error('❌ STEP 5 FAILED:', e);
         throw e;
     }
 
-    // ── STEP 6: Parse result ────────────────────────────────────────────────
+    // ── STEP 6: Parse result ──────────────────────────────────────────────
     if (!receipt || !receipt.result || !receipt.result.newToken) {
         throw new Error('Transaction successful but could not parse token address.');
     }
@@ -408,36 +319,21 @@ async function deployToken(name, symbol, totalSupply) {
 // ============================================================
 // Recently Launched Tokens
 // ============================================================
-
-/**
- * Loads tokens from localStorage.
- */
 function loadTokens() {
     try {
         const raw = localStorage.getItem(CONFIG.STORAGE_KEY);
-        if (raw) {
-            state.launchedTokens = JSON.parse(raw);
-        }
+        if (raw) state.launchedTokens = JSON.parse(raw);
     } catch {
         state.launchedTokens = [];
     }
 }
 
-/**
- * Saves tokens to localStorage.
- */
 function saveTokens() {
     try {
         localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(state.launchedTokens));
-    } catch {
-        // localStorage full or blocked — silent fail
-    }
+    } catch { }
 }
 
-/**
- * Adds a new token to the list and re-renders.
- * @param {{ name: string, symbol: string, totalSupply: string, creator: string, address: string }} token
- */
 function addToken(token) {
     const record = {
         name: token.name,
@@ -453,22 +349,12 @@ function addToken(token) {
     updateGlobalCounter();
 }
 
-/**
- * Formats a number with commas.
- * @param {string|number} num
- * @returns {string}
- */
 function formatSupply(num) {
     const n = Number(String(num).replace(/,/g, ''));
     if (isNaN(n)) return String(num);
     return n.toLocaleString('en-US');
 }
 
-/**
- * Returns a human-readable "time ago" string.
- * @param {number} timestamp - Unix ms timestamp
- * @returns {string}
- */
 function timeAgo(timestamp) {
     const seconds = Math.floor((Date.now() - timestamp) / 1000);
     if (seconds < 5) return 'just now';
@@ -479,39 +365,33 @@ function timeAgo(timestamp) {
     if (hours < 24) return `${hours}h ago`;
     const days = Math.floor(hours / 24);
     if (days < 30) return `${days}d ago`;
-    const months = Math.floor(days / 30);
-    return `${months}mo ago`;
+    return `${Math.floor(days / 30)}mo ago`;
 }
 
-/**
- * Renders the full tokens list to the DOM.
- */
+function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.appendChild(document.createTextNode(str));
+    return div.innerHTML;
+}
+
 function renderTokensList() {
     const count = state.launchedTokens.length;
-
-    // Update count badge
     dom.tokensCount.textContent = count;
 
-    // Toggle empty state
     if (count === 0) {
         dom.tokensEmpty.style.display = 'block';
-        // Remove any leftover cards
         dom.tokensList.querySelectorAll('.token-card').forEach((c) => c.remove());
         return;
     }
 
     dom.tokensEmpty.style.display = 'none';
-
-    // Build cards
     const fragment = document.createDocumentFragment();
 
     state.launchedTokens.forEach((token, index) => {
         const card = document.createElement('div');
         card.className = 'token-card';
         card.style.animationDelay = `${index * 60}ms`;
-
         const symbolShort = token.symbol.slice(0, 3);
-
         card.innerHTML = `
             <div class="token-card__top-row">
                 <div class="token-card__icon">${escapeHtml(symbolShort)}</div>
@@ -537,52 +417,26 @@ function renderTokensList() {
                 </div>
             </div>
         `;
-
-        // Open detail modal on click
         card.addEventListener('click', () => openTokenDetail(token));
-
         fragment.appendChild(card);
     });
 
-    // Clear old cards, keep empty state element
     dom.tokensList.querySelectorAll('.token-card').forEach((c) => c.remove());
     dom.tokensList.appendChild(fragment);
 }
 
-/**
- * Updates all "time ago" labels without full re-render.
- */
 function refreshTimeLabels() {
     dom.tokensList.querySelectorAll('[data-timestamp]').forEach((el) => {
         const ts = parseInt(el.getAttribute('data-timestamp'), 10);
-        if (!isNaN(ts)) {
-            el.textContent = timeAgo(ts);
-        }
+        if (!isNaN(ts)) el.textContent = timeAgo(ts);
     });
-}
-
-/**
- * Simple HTML escape to prevent XSS.
- * @param {string} str
- * @returns {string}
- */
-function escapeHtml(str) {
-    const div = document.createElement('div');
-    div.appendChild(document.createTextNode(str));
-    return div.innerHTML;
 }
 
 // ============================================================
 // Token Detail Modal
 // ============================================================
-
-/**
- * Opens the token detail modal for a given token.
- * @param {object} token - Token record from state.launchedTokens
- */
 function openTokenDetail(token) {
     state.currentDetailToken = token;
-
     dom.detailIcon.textContent = token.symbol.slice(0, 3);
     dom.detailName.textContent = token.name;
     dom.detailSymbol.textContent = token.symbol;
@@ -590,28 +444,20 @@ function openTokenDetail(token) {
     dom.detailAddress.textContent = token.address;
     dom.detailCreator.textContent = token.creator;
     dom.detailCopyAddr.classList.remove('copied');
-
     dom.detailOverlay.classList.add('active');
     document.body.style.overflow = 'hidden';
     SFX.click();
 }
 
-/**
- * Closes the token detail modal.
- */
 function closeTokenDetail() {
     dom.detailOverlay.classList.remove('active');
     document.body.style.overflow = '';
     state.currentDetailToken = null;
 }
 
-/**
- * Copies the contract address in the detail modal.
- */
 async function copyDetailAddress() {
     const addr = dom.detailAddress.textContent;
     if (!addr) return;
-
     try {
         await navigator.clipboard.writeText(addr);
     } catch {
@@ -628,38 +474,24 @@ async function copyDetailAddress() {
     setTimeout(() => dom.detailCopyAddr.classList.remove('copied'), 1500);
 }
 
-/**
- * Adds the current token to OPWallet.
- * Uses the unisat-compatible API to request adding a token.
- */
 async function addTokenToWallet() {
     const token = state.currentDetailToken;
     if (!token) return;
-
     if (!isWalletAvailable()) {
         window.open('https://opnet.org', '_blank');
         return;
     }
-
     try {
-        const provider = window.opnet || window.unisat;
-        if (provider && typeof provider.sendBitcoin === 'function') {
-            // For now we copy the address so the user can add manually
-            await navigator.clipboard.writeText(token.address);
-            alert('Token address copied! Add it manually in OPWallet > Manage Tokens.');
-        }
+        await navigator.clipboard.writeText(token.address);
+        alert('Token address copied! Add it manually in OPWallet > Manage Tokens.');
     } catch (err) {
         alert('Could not add token. Please add the contract address manually in OPWallet.');
     }
 }
 
-/**
- * Opens Twitter/X with a pre-filled tweet about the token.
- */
 function shareOnTwitter() {
     const token = state.currentDetailToken;
     if (!token) return;
-
     const text = `I just launched $${token.symbol} on Bitcoin L1 via OP_NET! 🚀 Contract: ${token.address} #opnetvibecode`;
     const url = `https://x.com/intent/tweet?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank', 'noopener,noreferrer');
@@ -668,26 +500,16 @@ function shareOnTwitter() {
 // ============================================================
 // UI Helpers
 // ============================================================
-
-/**
- * Shows an error message.
- * @param {string} msg - Error text
- */
 function showError(msg) {
     dom.errorMsg.textContent = msg;
     dom.errorMsg.classList.add('visible');
     SFX.error();
 }
 
-/** Hides the error message. */
 function hideError() {
     dom.errorMsg.classList.remove('visible');
 }
 
-/**
- * Sets the launch button to loading state.
- * @param {boolean} loading
- */
 function setLoading(loading) {
     state.isLaunching = loading;
     dom.btnLaunch.classList.toggle('loading', loading);
@@ -696,10 +518,6 @@ function setLoading(loading) {
     textEl.textContent = loading ? 'Deploying your token to Bitcoin...' : 'Launch Token';
 }
 
-/**
- * Switches to the success view.
- * @param {string} address - Deployed token address
- */
 function showSuccess(address) {
     dom.tokenAddress.textContent = address;
     dom.formView.style.display = 'none';
@@ -707,7 +525,6 @@ function showSuccess(address) {
     SFX.success();
 }
 
-/** Resets back to the form view. */
 function resetView() {
     dom.form.reset();
     dom.formView.style.display = 'block';
@@ -720,14 +537,12 @@ function resetView() {
 // ============================================================
 // Event Handlers
 // ============================================================
-
 dom.btnWallet.addEventListener('click', connectWallet);
 
 dom.form.addEventListener('submit', async (e) => {
     e.preventDefault();
     hideError();
 
-    // Wallet gate
     if (!state.isConnected) {
         showError('Please connect your OPWallet first.');
         return;
@@ -748,7 +563,6 @@ dom.form.addEventListener('submit', async (e) => {
 
         const tokenAddr = await deployToken(name, symbol, supply);
 
-        // Track the newly launched token
         addToken({
             name,
             symbol,
@@ -768,13 +582,11 @@ dom.form.addEventListener('submit', async (e) => {
 dom.btnCopy.addEventListener('click', async () => {
     const addr = dom.tokenAddress.textContent;
     if (!addr || addr === '—') return;
-
     try {
         await navigator.clipboard.writeText(addr);
         dom.btnCopy.classList.add('copied');
         setTimeout(() => dom.btnCopy.classList.remove('copied'), 1500);
     } catch {
-        // Fallback
         const range = document.createRange();
         range.selectNodeContents(dom.tokenAddress);
         const sel = window.getSelection();
@@ -789,39 +601,34 @@ dom.btnCopy.addEventListener('click', async () => {
 
 dom.btnReset.addEventListener('click', resetView);
 
-// Live-enable launch button on input
 [dom.inputName, dom.inputSymbol, dom.inputSupply].forEach((input) => {
     input.addEventListener('input', updateLaunchButton);
 });
 
-// Force uppercase for symbol
 dom.inputSymbol.addEventListener('input', () => {
     dom.inputSymbol.value = dom.inputSymbol.value.toUpperCase();
 });
 
-// Format supply with commas on blur
 dom.inputSupply.addEventListener('blur', () => {
     const raw = dom.inputSupply.value.replace(/,/g, '').trim();
     if (raw && !isNaN(Number(raw))) {
         dom.inputSupply.value = Number(raw).toLocaleString('en-US');
     }
 });
+
 dom.inputSupply.addEventListener('focus', () => {
     dom.inputSupply.value = dom.inputSupply.value.replace(/,/g, '');
 });
 
-// Detail modal events
 dom.detailClose.addEventListener('click', closeTokenDetail);
 dom.detailCopyAddr.addEventListener('click', copyDetailAddress);
 dom.detailAddWallet.addEventListener('click', addTokenToWallet);
 dom.detailShareTwitter.addEventListener('click', shareOnTwitter);
 
-// Close detail on overlay click (outside card)
 dom.detailOverlay.addEventListener('click', (e) => {
     if (e.target === dom.detailOverlay) closeTokenDetail();
 });
 
-// Close detail on Escape key
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && state.currentDetailToken) closeTokenDetail();
 });
@@ -829,30 +636,20 @@ document.addEventListener('keydown', (e) => {
 // ============================================================
 // Global Token Counter
 // ============================================================
-
-/**
- * Updates the "X tokens launched so far" counter in the hero banner.
- */
 function updateGlobalCounter() {
     const el = dom.globalTokenCount;
     if (!el) return;
     el.textContent = state.launchedTokens.length;
-    // Bump animation
     el.classList.add('bump');
     setTimeout(() => el.classList.remove('bump'), 300);
 }
 
-
 // ============================================================
 // Initialization
 // ============================================================
-
-// Load persisted tokens & render
 loadTokens();
 renderTokensList();
 updateLaunchButton();
 updateGlobalCounter();
 
-// Auto-refresh "time ago" labels
 setInterval(refreshTimeLabels, CONFIG.TIME_REFRESH_MS);
-
