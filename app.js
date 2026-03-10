@@ -6,7 +6,7 @@
 // Configuration
 // ============================================================
 const CONFIG = Object.freeze({
-    FACTORY_ADDRESS: 'opt1sqpd480scukpyn5k76m0j8kruek0jrmd7aqzt593z',
+    FACTORY_ADDRESS: 'opt1sqz665nhcvgfd0w2q9starc0wm6makl9es5udum03',
     FEE_RECIPIENT: 'opt1p4k8xfkaz6zu25nhygcycxe6d3e8dxv9e4d5mfytvld75u8dvktesf973v6',
     NETWORK: 'testnet',
     RPC_URL: 'https://testnet.opnet.org',
@@ -16,7 +16,7 @@ const CONFIG = Object.freeze({
 });
 
 const RPC_URL = 'https://testnet.opnet.org';
-const FACTORY_ADDRESS = 'opt1sqpd480scukpyn5k76m0j8kruek0jrmd7aqzt593z';
+const FACTORY_ADDRESS = 'opt1sqz665nhcvgfd0w2q9starc0wm6makl9es5udum03';
 
 // ============================================================
 // DOM References
